@@ -1,0 +1,62 @@
+Create table schema
+CREATE TABLE keyspace_test_latency.test_latency (
+    attack_type text,
+    average_incoming_traffic int,
+    attack_protocol text,
+    average_incoming_flow int,
+    average_incoming_pps int,
+    ip text,
+    PRIMARY KEY (attack_type, average_incoming_traffic)
+) WITH CLUSTERING ORDER BY (average_incoming_traffic ASC)
+
+CREATE INDEX attack_protocol_idx ON keyspace_test_latency.test_latency (attack_protocol);
+
+
+Here,
+Primary key: attack_type, average_incoming_traffic
+Partition key: attack_type
+Clustering key: average_incoming_traffic
+Secondary Index: attack_protocol
+
+Number of nodes in cluster: 1
+Number of rows: 10000001
+
+Below are the expected query response of some queries:
+
+1.SELECT * FROM test_latency WHERE attack_type = 'dos';
+Number of rows return: 1998445 rows
+Response time: 5 min 19 sec
+
+2.SELECT * FROM test_latency WHERE attack_type = 'dos' AND average_incoming_traffic = 7081728;
+Number of rows return: 1 row
+Response time: 1.089 millisec
+
+3.SELECT * FROM test_latency WHERE attack_protocol = 'udp';
+Request read timeout error
+
+4.SELECT * FROM test_latency WHERE attack_type = 'dos' AND attack_protocol = 'udp';
+Request read timeout error
+
+5.SELECT * FROM test_latency WHERE attack_type = 'dos' AND average_incoming_traffic = 7081728 AND attack_protocol = 'ftp';
+Number of rows return: 1 row
+Response time: 1.07 sec
+
+6.SELECT count(*) FROM test_latency;
+Request read timeout error
+
+7.SELECT count(*) FROM test_latency WHERE attack_type = 'dos';
+Request read timeout error
+
+8.SELECT count(*) FROM test_latency WHERE attack_type = 'dos' AND average_incoming_traffic > 7081728;
+Number of rows return: 1 row
+Response time: 3.55 sec
+
+9.SELECT count(*) FROM test_latency GROUP BY attack_type;
+Request read timeout error
+
+10.SELECT count(*) FROM test_latency GROUP BY attack_type, average_incoming_traffic;
+Number of rows return: 10000001 rows
+Response time: 9 min
+
+11.SELECT MAX(average_incoming_flow) FROM test_latency GROUP BY attack_type;
+Request read timeout error
